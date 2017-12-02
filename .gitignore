@@ -1,0 +1,43 @@
+#
+# SQLite
+#
+
+*.db
+
+#
+# OSX
+#
+
+.DS_Store
+
+#
+# Windows
+#
+
+Thumbs.db
+
+#
+# Eclipse
+#
+
+.classpath
+.project
+.metadata
+.settings/
+
+#
+# JetBrains IDEs
+#
+
+.idea
+*.iws
+/out/
+.idea_modules/
+
+#
+# Vim
+#
+
+[._]*.s[a-w][a-z]
+[._]s[a-w][a-z]
+*~
