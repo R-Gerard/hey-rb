@@ -10,6 +10,7 @@ def usage()
   STDERR.puts 'List all events:        hey list'
   STDERR.puts 'Adding/revising reason: hey reason <event_id> [optional reason string]'
   STDERR.puts 'Delete event:           hey delete <event_id>'
+  STDERR.puts 'Report on events:       hey report <report_type>'
 
   exit 1
 end
@@ -21,6 +22,29 @@ raise 'sqlite3 command was not found. Please install SQLite and ensure it is ava
 DB_FILE = ENV['INTERRUPT_TRACKER_DB'] || '~/interrupts.db'
 
 INTERRUPTS_TABLE = 'interrupts'
+
+REPORT_QUERIES = {
+  'count' => {
+    'description' => 'Total number of events in the database',
+    'query' => "SELECT COUNT(*) AS total FROM #{INTERRUPTS_TABLE};",
+    'flags' => ''
+  },
+  'names' => {
+    'description' => 'Tabular results of events by name',
+    'query' => "SELECT name, count(name) AS frequency FROM #{INTERRUPTS_TABLE} GROUP BY name ORDER BY frequency DESC;",
+    'flags' => '-column -header'
+  },
+  'hourly' => {
+    'description' => 'Tabular results of events by hour of the day',
+    'query' => "SELECT hour, count(hour) AS frequency FROM (SELECT strftime('%H', start_time, 'localtime') AS hour FROM #{INTERRUPTS_TABLE}) GROUP BY hour ORDER BY hour;",
+    'flags' => '-column -header'
+  },
+  'daily' => {
+    'description' => 'Tabular results of events by day of the week',
+    'query' => " SELECT CASE cast(strftime('%w', start_time, 'localtime') AS integer) WHEN 0 THEN 'SUN' WHEN 1 THEN 'MON' WHEN 2 THEN 'TUE' WHEN 3 THEN 'WED' WHEN 4 THEN 'THU' WHEN 5 THEN 'FRI' ELSE 'SAT' END AS day_of_week, count(event_id) AS frequency FROM #{INTERRUPTS_TABLE} GROUP BY day_of_week ORDER BY strftime('%w', start_time, 'localtime');",
+    'flags' => '-column -header'
+  }
+}
 
 if !File.exist?(File.expand_path(DB_FILE))
   cmd = "sqlite3 #{DB_FILE} 'CREATE TABLE #{INTERRUPTS_TABLE}(event_id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, name TEXT NOT NULL, start_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, reason TEXT);'"
@@ -34,7 +58,31 @@ usage() if ARGV[0] == '--help'
 if ARGV[0] == 'list'
   # TODO: Remove the '-column' flag and handle the pretty-printing ourselves
   # FIXME: Don't load the entire SELECT result into memory, e.g. use LIMIT x,y
-  cmd = "sqlite3 -column -header #{DB_FILE} 'SELECT * FROM #{INTERRUPTS_TABLE} ORDER BY start_time;'"
+  query = "SELECT event_id, name, datetime(start_time, 'localtime') AS start_time, reason FROM #{INTERRUPTS_TABLE} ORDER BY start_time;"
+  cmd = "sqlite3 -column -header #{DB_FILE} \"#{query}\""
+  stdout, stderr, status = Open3.capture3(cmd)
+  puts stdout
+  STDERR.puts stderr unless stderr.nil? || stderr.empty?
+
+  exit status.to_i
+end
+
+if ARGV[0] == 'report'
+  if ARGV.length < 2 || !REPORT_QUERIES.has_key?(ARGV[1])
+    temp_hash = {
+      'report_type' => {
+        'description' => 'description'
+      }
+    }
+
+    STDERR.puts "Usage: hey report <report_type>"
+    STDERR.puts temp_hash.merge(REPORT_QUERIES).collect { |k,v| "  #{k.ljust(12)} #{v['description']}" }
+    exit 1
+  end
+
+  query = REPORT_QUERIES[ARGV[1]]['query']
+  flags = REPORT_QUERIES[ARGV[1]]['flags']
+  cmd = "sqlite3 #{flags} #{DB_FILE} \"#{query}\""
   stdout, stderr, status = Open3.capture3(cmd)
   puts stdout
   STDERR.puts stderr unless stderr.nil? || stderr.empty?

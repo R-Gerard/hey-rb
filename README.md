@@ -58,3 +58,16 @@ hey delete <event_id>
 ```
 
 Permanently deletes the record where `event_id = <event_id>`.
+
+## Generate reports of events
+
+```
+hey report <report_type>
+```
+
+|report_type|description|
+|-----------|-----------|
+| `count`   | Count of number of events in the database |
+| `names`   | Tabular results of events by name |
+| `hourly`  | Tabular results of events by hour of the day |
+| `daily`   | Tabular results of events by day of the week |
