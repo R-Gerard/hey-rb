@@ -20,6 +20,13 @@ Add `hey.rb` to your path, for example:
 cp hey.rb /usr/local/bin/hey
 ```
 
+Optionally, add `hey.bc` to your local `bash_completion.d` directory:
+
+```
+cp hey.bc /usr/local/etc/bash_completion.d/hey
+. /usr/local/etc/bash_completion.d/hey
+```
+
 By default, `hey` stores a SQLite database at `~/interrups.db`. You can override the database location by setting the environment variable `INTERRUPT_TRACKER_DB`.
 
 # Usage

@@ -1,0 +1,25 @@
+# hey completion
+
+_hey() {
+  local cur=${COMP_WORDS[COMP_CWORD]}
+  local prev=${COMP_WORDS[COMP_CWORD-1]}
+
+  if [[ ${COMP_CWORD} -eq 1 ]]; then
+    # Run `hey report names` to get top offenders and put them in the COMPREPLY
+    local num_offenders=5
+    local offenders=($(hey report names | tail +3 | head -$num_offenders | tr -s ' ' | cut -f1 -d' '))
+    COMPREPLY=($(compgen -W "delete kill list reason rename report ${offenders[*]}" -- $cur))
+
+    return 0
+  fi
+
+  case "$prev" in
+    report)
+      COMPREPLY=($(compgen -W "count daily hourly names" -- $cur))
+      ;;
+    *)
+      COMPREPLY=()
+      ;;
+  esac
+}
+complete -F _hey hey
