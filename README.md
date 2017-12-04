@@ -51,6 +51,16 @@ hey reason <event_id> [optional reason string]
 
 Overwrites the original reason (if any); clears the existing reason if no reason is provided.
 
+## Bulk rename events
+
+```
+hey rename <old_name> <new_name> [event_id]
+```
+
+Changes the `name` field of **all** events where `name = <old_name>`.
+
+If `event_id` is specified then only the record corresponding to the id is updated and only if the `name` field is equal to the `<old_name>`.
+
 ## Delete event
 
 ```

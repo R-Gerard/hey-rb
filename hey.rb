@@ -9,6 +9,7 @@ def usage()
   STDERR.puts 'Create an event:        hey <name> [optional reason string]'
   STDERR.puts 'List all events:        hey list'
   STDERR.puts 'Adding/revising reason: hey reason <event_id> [optional reason string]'
+  STDERR.puts 'Bulk rename events:     hey rename <old_name> <new_name> [event_id]'
   STDERR.puts 'Delete event:           hey delete <event_id>'
   STDERR.puts 'Delete events by name:  hey kill <name>'
   STDERR.puts 'Report on events:       hey report <report_type>'
@@ -98,6 +99,21 @@ if ARGV[0] == 'reason'
   reason = (ARGV[2..-1] || []).join(' ').strip.gsub(/"/, '')
 
   cmd = "sqlite3 #{DB_FILE} 'UPDATE #{INTERRUPTS_TABLE} SET reason = \"#{reason}\" WHERE event_id = #{event_id};'"
+  stdout, stderr, status = Open3.capture3(cmd)
+  STDERR.puts stderr unless stderr.nil? || stderr.empty?
+
+  exit status.to_i
+end
+
+if ARGV[0] == 'rename'
+  usage() if ARGV.length < 3
+
+  old_name = ARGV[1].strip.downcase.gsub(/"/, '')
+  new_name = ARGV[2].strip.downcase.gsub(/"/, '')
+  event_id_clause = ARGV[3] ? " AND event_id = #{ARGV[3].strip.to_i}" : ''
+
+  query = "UPDATE #{INTERRUPTS_TABLE} SET name = '#{new_name}' WHERE name = '#{old_name}'#{event_id_clause};"
+  cmd = "sqlite3 #{DB_FILE} \"#{query}\""
   stdout, stderr, status = Open3.capture3(cmd)
   STDERR.puts stderr unless stderr.nil? || stderr.empty?
 
