@@ -10,6 +10,7 @@ def usage()
   STDERR.puts 'List all events:        hey list'
   STDERR.puts 'Adding/revising reason: hey reason <event_id> [optional reason string]'
   STDERR.puts 'Delete event:           hey delete <event_id>'
+  STDERR.puts 'Delete events by name:  hey kill <name>'
   STDERR.puts 'Report on events:       hey report <report_type>'
 
   exit 1
@@ -109,6 +110,17 @@ if ARGV[0] == 'delete'
   event_id = ARGV[1].strip.to_i
 
   cmd = "sqlite3 #{DB_FILE} 'DELETE FROM #{INTERRUPTS_TABLE} WHERE event_id = #{event_id};'"
+  stdout, stderr, status = Open3.capture3(cmd)
+  STDERR.puts stderr unless stderr.nil? || stderr.empty?
+
+  exit status.to_i
+end
+
+if ARGV[0] == 'kill'
+  usage() if ARGV.length < 2
+
+  name = ARGV[1].strip.downcase.gsub(/"/, '')
+  cmd = "sqlite3 #{DB_FILE} 'DELETE FROM #{INTERRUPTS_TABLE} WHERE name = \"#{name}\";'"
   stdout, stderr, status = Open3.capture3(cmd)
   STDERR.puts stderr unless stderr.nil? || stderr.empty?
 

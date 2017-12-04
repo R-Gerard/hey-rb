@@ -59,6 +59,14 @@ hey delete <event_id>
 
 Permanently deletes the record where `event_id = <event_id>`.
 
+## Delete events by name
+
+```
+hey kill <name>
+```
+
+Permanently deletes **all** events where `name = <name>`.
+
 ## Generate reports of events
 
 ```
