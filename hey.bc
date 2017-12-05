@@ -8,7 +8,7 @@ _hey() {
     # Run `hey report names` to get top offenders and put them in the COMPREPLY
     local num_offenders=5
     local offenders=($(hey report names | tail +3 | head -$num_offenders | tr -s ' ' | cut -f1 -d' '))
-    COMPREPLY=($(compgen -W "delete kill list reason rename report ${offenders[*]}" -- $cur))
+    COMPREPLY=($(compgen -W "delete end kill list reason rename report ${offenders[*]}" -- $cur))
 
     return 0
   fi

@@ -58,6 +58,14 @@ hey reason <event_id> [optional reason string]
 
 Overwrites the original reason (if any); clears the existing reason if no reason is provided.
 
+## Mark an event as done
+
+```
+hey end
+```
+
+Sets the most recent event's `end_time` to `CURRENT_TIMESTAMP` if and only if the current `end_time` is `null`.
+
 ## Bulk rename events
 
 ```

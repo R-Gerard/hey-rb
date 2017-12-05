@@ -9,6 +9,7 @@ def usage()
   STDERR.puts 'Create an event:        hey <name> [optional reason string]'
   STDERR.puts 'List all events:        hey list'
   STDERR.puts 'Adding/revising reason: hey reason <event_id> [optional reason string]'
+  STDERR.puts 'Mark an event as done:  hey end'
   STDERR.puts 'Bulk rename events:     hey rename <old_name> <new_name> [event_id]'
   STDERR.puts 'Delete event:           hey delete <event_id>'
   STDERR.puts 'Delete events by name:  hey kill <name>'
@@ -25,6 +26,7 @@ DB_FILE = ENV['INTERRUPT_TRACKER_DB'] || '~/interrupts.db'
 
 INTERRUPTS_TABLE = 'interrupts'
 
+TOTAL_MINUTES_SUBQUERY = "sum(round((strftime('%s', end_time) - strftime('%s', start_time)) / 60.0, 2)) AS total_minutes"
 REPORT_QUERIES = {
   'count' => {
     'description' => 'Total number of events in the database',
@@ -33,7 +35,7 @@ REPORT_QUERIES = {
   },
   'names' => {
     'description' => 'Tabular results of events by name',
-    'query' => "SELECT name, count(name) AS frequency FROM #{INTERRUPTS_TABLE} GROUP BY name ORDER BY frequency DESC;",
+    'query' => "SELECT name, count(name) AS frequency, #{TOTAL_MINUTES_SUBQUERY} FROM #{INTERRUPTS_TABLE} GROUP BY name ORDER BY frequency DESC, total_minutes DESC;",
     'flags' => '-column -header'
   },
   'hourly' => {
@@ -43,13 +45,13 @@ REPORT_QUERIES = {
   },
   'daily' => {
     'description' => 'Tabular results of events by day of the week',
-    'query' => " SELECT CASE cast(strftime('%w', start_time, 'localtime') AS integer) WHEN 0 THEN 'SUN' WHEN 1 THEN 'MON' WHEN 2 THEN 'TUE' WHEN 3 THEN 'WED' WHEN 4 THEN 'THU' WHEN 5 THEN 'FRI' ELSE 'SAT' END AS day_of_week, count(event_id) AS frequency FROM #{INTERRUPTS_TABLE} GROUP BY day_of_week ORDER BY strftime('%w', start_time, 'localtime');",
+    'query' => " SELECT CASE cast(strftime('%w', start_time, 'localtime') AS integer) WHEN 0 THEN 'SUN' WHEN 1 THEN 'MON' WHEN 2 THEN 'TUE' WHEN 3 THEN 'WED' WHEN 4 THEN 'THU' WHEN 5 THEN 'FRI' ELSE 'SAT' END AS day_of_week, count(event_id) AS frequency, #{TOTAL_MINUTES_SUBQUERY} FROM #{INTERRUPTS_TABLE} GROUP BY day_of_week ORDER BY strftime('%w', start_time, 'localtime');",
     'flags' => '-column -header'
   }
 }
 
 if !File.exist?(File.expand_path(DB_FILE))
-  cmd = "sqlite3 #{DB_FILE} 'CREATE TABLE #{INTERRUPTS_TABLE}(event_id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, name TEXT NOT NULL, start_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, reason TEXT);'"
+  cmd = "sqlite3 #{DB_FILE} 'CREATE TABLE #{INTERRUPTS_TABLE}(event_id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, name TEXT NOT NULL, start_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, end_time DATETIME, reason TEXT);'"
   stdout, stderr, status = Open3.capture3(cmd)
   STDERR.puts unless stderr.nil? || stderr.empty?
 end
@@ -60,7 +62,7 @@ usage() if ARGV[0] == '--help'
 if ARGV[0] == 'list'
   # TODO: Remove the '-column' flag and handle the pretty-printing ourselves
   # FIXME: Don't load the entire SELECT result into memory, e.g. use LIMIT x,y
-  query = "SELECT event_id, name, datetime(start_time, 'localtime') AS start_time, reason FROM #{INTERRUPTS_TABLE} ORDER BY start_time;"
+  query = "SELECT event_id, name, datetime(start_time, 'localtime') AS start_time, datetime(end_time, 'localtime') AS end_time, round((strftime('%s',end_time) - strftime('%s',start_time)) / 60.0, 2) AS elapsed_minutes, reason FROM #{INTERRUPTS_TABLE} ORDER BY start_time;"
   cmd = "sqlite3 -column -header #{DB_FILE} \"#{query}\""
   stdout, stderr, status = Open3.capture3(cmd)
   puts stdout
@@ -113,6 +115,15 @@ if ARGV[0] == 'rename'
   event_id_clause = ARGV[3] ? " AND event_id = #{ARGV[3].strip.to_i}" : ''
 
   query = "UPDATE #{INTERRUPTS_TABLE} SET name = '#{new_name}' WHERE name = '#{old_name}'#{event_id_clause};"
+  cmd = "sqlite3 #{DB_FILE} \"#{query}\""
+  stdout, stderr, status = Open3.capture3(cmd)
+  STDERR.puts stderr unless stderr.nil? || stderr.empty?
+
+  exit status.to_i
+end
+
+if ARGV[0] == 'end'
+  query = "UPDATE #{INTERRUPTS_TABLE} SET end_time = CURRENT_TIMESTAMP WHERE event_id = (SELECT MAX(event_id) FROM #{INTERRUPTS_TABLE}) AND end_time IS NULL;"
   cmd = "sqlite3 #{DB_FILE} \"#{query}\""
   stdout, stderr, status = Open3.capture3(cmd)
   STDERR.puts stderr unless stderr.nil? || stderr.empty?
