@@ -53,10 +53,12 @@ Lists all events in chronological order.
 ## Adding/revising reason of event
 
 ```
-hey reason <event_id> [optional reason string]
+hey reason [-event_id] [optional reason string]
 ```
 
-Overwrites the original reason (if any); clears the existing reason if no reason is provided.
+Overwrites the original reason (if any); clears the existing reason if no reason is provided and an event_id is specified.
+
+If the first argument is `-#` then the corresponding event will be updated, otherwise the most recent event will be updated.
 
 ## Mark an event as done
 

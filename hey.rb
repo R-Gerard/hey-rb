@@ -8,7 +8,7 @@ def usage()
   STDERR.puts 'Usage:'
   STDERR.puts 'Create an event:        hey <name> [optional reason string]'
   STDERR.puts 'List all events:        hey list'
-  STDERR.puts 'Adding/revising reason: hey reason <event_id> [optional reason string]'
+  STDERR.puts 'Adding/revising reason: hey reason [-event_id] [optional reason string]'
   STDERR.puts 'Mark an event as done:  hey end'
   STDERR.puts 'Bulk rename events:     hey rename <old_name> <new_name> [event_id]'
   STDERR.puts 'Delete event:           hey delete <event_id>'
@@ -97,10 +97,16 @@ end
 if ARGV[0] == 'reason'
   usage() if ARGV.length < 2
 
-  event_id = ARGV[1].strip.to_i
-  reason = (ARGV[2..-1] || []).join(' ').strip.gsub(/"/, '')
+  if ARGV[1] =~ /-\d+/
+    event_id_clause = ARGV[1].strip.gsub(/-/, '')
+    argc = 2
+  else
+    event_id_clause = "(SELECT MAX(event_id) FROM #{INTERRUPTS_TABLE})"
+    argc = 1
+  end
+  reason = (ARGV[argc..-1] || []).join(' ').strip.gsub(/"/, '')
 
-  cmd = "sqlite3 #{DB_FILE} 'UPDATE #{INTERRUPTS_TABLE} SET reason = \"#{reason}\" WHERE event_id = #{event_id};'"
+  cmd = "sqlite3 #{DB_FILE} 'UPDATE #{INTERRUPTS_TABLE} SET reason = \"#{reason}\" WHERE event_id = #{event_id_clause};'"
   stdout, stderr, status = Open3.capture3(cmd)
   STDERR.puts stderr unless stderr.nil? || stderr.empty?
 
